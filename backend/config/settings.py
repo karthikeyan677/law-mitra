@@ -95,6 +95,8 @@ ASGI_APPLICATION = 'config.asgi.application'
 # Falls back to local SQLite if DATABASE_URL is not set.
 # When running unit tests with pytest, uses fast in-memory SQLite.
 import sys
+import socket
+
 if 'pytest' in sys.modules or any('pytest' in arg for arg in sys.argv):
     DATABASES = {
         'default': {
@@ -103,12 +105,25 @@ if 'pytest' in sys.modules or any('pytest' in arg for arg in sys.argv):
         }
     }
 else:
-    DATABASES = {
-        'default': env.db(
-            'DATABASE_URL',
-            default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
-        )
-    }
+    default_db = env.db(
+        'DATABASE_URL',
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}"
+    )
+    # If pointed to local postgres on localhost but no service is listening, fall back to SQLite
+    if default_db.get('ENGINE') == 'django.db.backends.postgresql' and default_db.get('HOST') in ('localhost', '127.0.0.1'):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(0.3)
+        port = int(default_db.get('PORT') or 5432)
+        try:
+            sock.connect(('127.0.0.1', port))
+            sock.close()
+        except (socket.error, ConnectionRefusedError):
+            print(f"[Law Mithra Notice] PostgreSQL is not running on 127.0.0.1:{port}. Falling back to local SQLite for development.")
+            default_db = {
+                'ENGINE': 'django.db.backends.sqlite3',
+                'NAME': BASE_DIR / 'db.sqlite3',
+            }
+    DATABASES = {'default': default_db}
 
 
 # Password validation
