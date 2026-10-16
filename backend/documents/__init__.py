@@ -1,0 +1,1 @@
+"""Documents application initialization."""

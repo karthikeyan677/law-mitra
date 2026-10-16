@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # =========================================================================
+  # 1. PostgreSQL Database Service
+  # =========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: lawmithra_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lawmithra_db}
+      POSTGRES_USER: ${POSTGRES_USER:-lawmithra}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lawmithra_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lawmithra} -d ${POSTGRES_DB:-lawmithra_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lawmithra_network
+
+  # =========================================================================
+  # 2. Redis In-Memory Cache & Message Broker
+  # =========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: lawmithra_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - lawmithra_network
+
+  # =========================================================================
+  # 3. Django REST Framework Backend Service (with hot reload)
+  # =========================================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: lawmithra_backend
+    restart: unless-stopped
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-django-insecure-law-mithra-dev-key}
+      DEBUG: ${DEBUG:-True}
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-localhost,127.0.0.1,backend,0.0.0.0}
+      DATABASE_URL: postgres://${POSTGRES_USER:-lawmithra}:${POSTGRES_PASSWORD:-lawmithra_password}@postgres:5432/${POSTGRES_DB:-lawmithra_db}
+      REDIS_URL: redis://redis:6379/0
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - lawmithra_network
+
+  # =========================================================================
+  # 4. Vite React Frontend Service (with hot reload)
+  # =========================================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: lawmithra_frontend
+    restart: unless-stopped
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - lawmithra_network
+
+# ===========================================================================
+# Named Volumes & Networks
+# ===========================================================================
+volumes:
+  postgres_data:
+    name: lawmithra_postgres_data
+  redis_data:
+    name: lawmithra_redis_data
+
+networks:
+  lawmithra_network:
+    name: lawmithra_network
+    driver: bridge
