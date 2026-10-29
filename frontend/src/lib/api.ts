@@ -21,6 +21,7 @@ export interface DocumentDetail {
   created_at: string;
   updated_at: string;
   pages: DocumentPage[];
+  section_count?: number;
 }
 
 export interface DocumentListItem {
@@ -35,6 +36,7 @@ export interface DocumentListItem {
   created_at: string;
   updated_at: string;
   total_words: number;
+  section_count?: number;
 }
 
 export interface UserProfile {
@@ -335,5 +337,101 @@ export async function reprocessDocument(id: string): Promise<void> {
   });
   if (!res.ok) {
     throw new Error(`Failed to trigger reprocessing: ${res.statusText}`);
+  }
+}
+
+/* ================= Section Detection API ================= */
+
+export interface DetectedSection {
+  id: string;
+  page_number: number;
+  act_raw: string;
+  act_key: string;
+  section_number: string;
+  sub_clause: string;
+  matched_text: string;
+  start_char: number;
+  end_char: number;
+  detection_method: 'rule' | 'manual';
+  review_status: 'auto' | 'confirmed' | 'rejected';
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface SectionGroup {
+  act_key: string;
+  count: number;
+  sections: DetectedSection[];
+}
+
+export interface GroupedSectionsResponse {
+  total_count: number;
+  groups: SectionGroup[];
+}
+
+export async function fetchDocumentSections(docId: string): Promise<GroupedSectionsResponse> {
+  const res = await apiFetch(`/api/documents/${docId}/sections/`);
+  if (!res.ok) {
+    throw new Error(`Failed to load detected sections: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function detectDocumentSections(docId: string): Promise<DetectedSection[]> {
+  const res = await apiFetch(`/api/documents/${docId}/detect-sections/`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to run section detection: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function updateDocumentSection(
+  docId: string,
+  sectionId: string,
+  data: { review_status?: string; act_key?: string; section_number?: string }
+): Promise<DetectedSection> {
+  const res = await apiFetch(`/api/documents/${docId}/sections/${sectionId}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to update section: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export async function addManualSection(
+  docId: string,
+  data: {
+    page_number: number;
+    start_char: number;
+    end_char: number;
+    section_number: string;
+    act_key?: string;
+    sub_clause?: string;
+  }
+): Promise<DetectedSection> {
+  const res = await apiFetch(`/api/documents/${docId}/sections/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to add manual section`);
+  }
+  return res.json();
+}
+
+export async function deleteManualSection(docId: string, sectionId: string): Promise<void> {
+  const res = await apiFetch(`/api/documents/${docId}/sections/${sectionId}/`, {
+    method: 'DELETE',
+  });
+  if (!res.ok && res.status !== 204) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.detail || `Failed to delete manual section`);
   }
 }

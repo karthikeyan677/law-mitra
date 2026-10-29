@@ -33,6 +33,9 @@ urlpatterns = [
     # Phase 1: Documents Vault & Extraction
     path('api/documents/', include('documents.urls')),
 
+    # Phase 2: Section Detection (nested under documents for ownership-filtered endpoints)
+    path('api/documents/<uuid:doc_id>/', include('analysis.urls')),
+
     # OpenAPI 3 Schema & Swagger UI
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

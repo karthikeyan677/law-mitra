@@ -76,6 +76,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
     pages = DocumentPageSerializer(many=True, read_only=True)
     file_url = serializers.SerializerMethodField()
     download_url = serializers.SerializerMethodField()
+    section_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -93,7 +94,12 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'pages',
+            'section_count',
         )
+
+    def get_section_count(self, obj):
+        """Count of detected sections excluding rejected ones."""
+        return obj.detected_sections.exclude(review_status='rejected').count()
 
     def get_download_url(self, obj):
         request = self.context.get('request')
@@ -110,6 +116,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
 class DocumentListSerializer(serializers.ModelSerializer):
     total_words = serializers.SerializerMethodField()
     download_url = serializers.SerializerMethodField()
+    section_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -125,6 +132,7 @@ class DocumentListSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
             'total_words',
+            'section_count',
         )
 
     def get_download_url(self, obj):
@@ -136,3 +144,7 @@ class DocumentListSerializer(serializers.ModelSerializer):
 
     def get_total_words(self, obj):
         return sum(page.word_count for page in obj.pages.all())
+
+    def get_section_count(self, obj):
+        """Count of detected sections excluding rejected ones."""
+        return obj.detected_sections.exclude(review_status='rejected').count()

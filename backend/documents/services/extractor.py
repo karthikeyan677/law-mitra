@@ -66,6 +66,17 @@ def process_document(document_id: str) -> bool:
         document.status = Document.Status.COMPLETED
         document.save(update_fields=['status', 'page_count', 'updated_at'])
         logger.info(f"event=ocr.completed doc_id={document_id} pages={document.page_count}")
+
+        # Auto-run section detection after successful OCR (non-fatal)
+        try:
+            from analysis.services.section_detector import detect_sections_for_document
+            detect_sections_for_document(str(document_id))
+            logger.info(f"event=section_detection.auto_completed doc_id={document_id}")
+        except Exception as exc:
+            logger.warning(
+                f"event=section_detection.auto_failed doc_id={document_id} error_type={type(exc).__name__}"
+            )
+
         return True
 
     except (Document.DoesNotExist, DatabaseError):

@@ -12,7 +12,8 @@ import {
   AlertCircle,
   FileCheck,
   AlertTriangle,
-  Layers
+  Layers,
+  Scale
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -183,6 +184,16 @@ export function DashboardPage({ onOpenUpload, onSelectDocument }: DashboardPageP
                     <span>•</span>
                     <span>{(doc.file_size / (1024 * 1024)).toFixed(2)} MB</span>
                   </div>
+
+                  {/* Section Count Chip */}
+                  {typeof doc.section_count === 'number' && doc.section_count > 0 && (
+                    <div className="mt-2.5">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gold-500/10 text-gold-800 dark:text-gold-300 border border-gold-500/30">
+                        <Scale className="w-3 h-3 text-gold-600 dark:text-gold-400" />
+                        <span>{doc.section_count} {doc.section_count === 1 ? 'section' : 'sections'} found</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Card Actions */}
