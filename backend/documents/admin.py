@@ -11,9 +11,9 @@ class DocumentPageInline(admin.TabularInline):
 
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
-    list_display = ('title', 'status', 'page_count', 'file_size', 'created_at')
+    list_display = ('title', 'owner', 'status', 'page_count', 'file_size', 'created_at')
     list_filter = ('status', 'detected_language', 'created_at')
-    search_fields = ('title', 'id')
+    search_fields = ('title', 'id', 'owner__email', 'owner__username')
     readonly_fields = ('id', 'file_size', 'page_count', 'created_at', 'updated_at')
     inlines = [DocumentPageInline]
 

@@ -27,6 +27,9 @@ urlpatterns = [
     # Health Check Endpoint
     path('api/health/', HealthCheckView.as_view(), name='api-health'),
 
+    # Authentication & Profile
+    path('api/auth/', include('accounts.urls')),
+
     # Phase 1: Documents Vault & Extraction
     path('api/documents/', include('documents.urls')),
 
@@ -36,6 +39,4 @@ urlpatterns = [
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

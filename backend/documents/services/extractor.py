@@ -5,6 +5,7 @@ from typing import Optional
 from PIL import Image
 import pypdf
 import pytesseract
+from django.db import DatabaseError
 
 from documents.models import Document, DocumentPage
 
@@ -16,22 +17,31 @@ def process_document(document_id: str) -> bool:
     Extracts text from an uploaded document (PDF or image).
     Updates Document status to PROCESSING, extracts page-by-page text,
     creates DocumentPage records, and sets status to COMPLETED or FAILED.
+    Adheres to Privacy Rule 9: logs only document IDs and event names.
     """
     try:
         document = Document.objects.get(id=document_id)
     except Document.DoesNotExist:
-        logger.error(f"Document with ID {document_id} not found.")
+        logger.warning(f"event=ocr.not_found doc_id={document_id}")
         return False
 
-    document.status = Document.Status.PROCESSING
-    document.error_message = ''
-    document.save(update_fields=['status', 'error_message', 'updated_at'])
+    try:
+        document.status = Document.Status.PROCESSING
+        document.error_message = ''
+        document.save(update_fields=['status', 'error_message', 'updated_at'])
+    except (Document.DoesNotExist, DatabaseError):
+        # Document was deleted while waiting to start
+        logger.info(f"event=ocr.aborted_deleted doc_id={document_id}")
+        return False
 
     file_path = document.file.path
     if not os.path.isfile(file_path):
-        document.status = Document.Status.FAILED
-        document.error_message = "Attached file not found on disk."
-        document.save(update_fields=['status', 'error_message', 'updated_at'])
+        try:
+            document.status = Document.Status.FAILED
+            document.error_message = "Attached file not found on disk."
+            document.save(update_fields=['status', 'error_message', 'updated_at'])
+        except (Document.DoesNotExist, DatabaseError):
+            pass
         return False
 
     file_ext = os.path.splitext(file_path)[1].lower()
@@ -45,26 +55,37 @@ def process_document(document_id: str) -> bool:
         elif file_ext in ('.png', '.jpg', '.jpeg', '.webp', '.tiff', '.bmp'):
             _process_image(document, file_path)
         else:
-            # Fallback text reading if plain text or generic
             _process_generic(document, file_path)
+
+        # Check if document still exists before saving completion
+        if not Document.objects.filter(id=document_id).exists():
+            logger.info(f"event=ocr.discarded_deleted doc_id={document_id}")
+            return False
 
         document.page_count = document.pages.count()
         document.status = Document.Status.COMPLETED
         document.save(update_fields=['status', 'page_count', 'updated_at'])
+        logger.info(f"event=ocr.completed doc_id={document_id} pages={document.page_count}")
         return True
 
+    except (Document.DoesNotExist, DatabaseError):
+        logger.info(f"event=ocr.interrupted_deleted doc_id={document_id}")
+        return False
     except Exception as exc:
-        logger.exception(f"Error extracting document {document_id}: {exc}")
-        document.status = Document.Status.FAILED
-        document.error_message = f"Extraction failed: {str(exc)}"
-        document.save(update_fields=['status', 'error_message', 'updated_at'])
+        logger.error(f"event=ocr.failed doc_id={document_id} error_type={type(exc).__name__}")
+        try:
+            if Document.objects.filter(id=document_id).exists():
+                document.status = Document.Status.FAILED
+                document.error_message = f"Extraction failed: {type(exc).__name__}"
+                document.save(update_fields=['status', 'error_message', 'updated_at'])
+        except Exception:
+            pass
         return False
 
 
 def _process_pdf(document: Document, file_path: str):
     """Parses PDF pages, extracting native digital text or running OCR fallback."""
     reader = pypdf.PdfReader(file_path)
-    total_pages = len(reader.pages)
 
     for idx, page in enumerate(reader.pages):
         page_num = idx + 1
@@ -113,11 +134,11 @@ def _process_image(document: Document, file_path: str):
         confidence = 85.0
     except pytesseract.TesseractNotFoundError:
         extracted_text = (
-            f"[Image notice: '{document.title}'. Tesseract OCR binary is not installed on the server. "
+            "[Image notice. Tesseract OCR binary is not installed on the server. "
             "Native OCR requires the Tesseract engine installed on host PATH.]"
         )
     except Exception as e:
-        extracted_text = f"[OCR processing encountered an issue: {str(e)}]"
+        extracted_text = f"[OCR processing encountered an issue: {type(e).__name__}]"
 
     DocumentPage.objects.create(
         document=document,
@@ -133,7 +154,7 @@ def _process_generic(document: Document, file_path: str):
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
     except Exception as e:
-        content = f"[Unable to decode file content: {str(e)}]"
+        content = f"[Unable to decode file content: {type(e).__name__}]"
 
     DocumentPage.objects.create(
         document=document,

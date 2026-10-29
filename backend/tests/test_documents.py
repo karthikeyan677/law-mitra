@@ -2,35 +2,35 @@ import io
 import os
 import pytest
 from django.urls import reverse
+from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APIClient
-import pypdf
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from documents.models import Document, DocumentPage
 
 
 @pytest.fixture
-def api_client():
-    return APIClient()
+def auth_user():
+    user = User.objects.create_user(
+        username='tester@lawmithra.in',
+        email='tester@lawmithra.in',
+        password='Password123!'
+    )
+    return user
 
 
-def create_sample_pdf_bytes(text_content: str = "In the High Court of Karnataka at Bengaluru.\nCriminal Petition No. 4022/2024.\nPetitioner: Ramesh Kumar.\nRespondent: State of Karnataka.") -> bytes:
-    """Helper to generate a real, valid in-memory PDF with text stream."""
-    writer = pypdf.PdfWriter()
-    page = writer.add_blank_page(width=595, height=842)
-    # Using pypdf's annotation or content stream to add extractable text
-    # Or create via ReportLab-style or direct raw stream
-    # With pypdf, we can write a simple valid PDF stream
-    buf = io.BytesIO()
-    writer.write(buf)
-    # Let's write a standard raw minimal PDF with text stream if needed,
-    # or write a standard PDF format:
-    return buf.getvalue()
+@pytest.fixture
+def api_client(auth_user):
+    client = APIClient()
+    refresh = RefreshToken.for_user(auth_user)
+    client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    return client
 
 
 @pytest.mark.django_db
-def test_upload_text_document(api_client, tmp_path):
+def test_upload_text_document(api_client, auth_user, tmp_path):
     """
     Test uploading a legal notice text document and verifying extraction.
     """
@@ -56,6 +56,7 @@ def test_upload_text_document(api_client, tmp_path):
 
     doc_id = data['id']
     doc = Document.objects.get(id=doc_id)
+    assert doc.owner == auth_user
     assert doc.pages.count() == 1
     page = doc.pages.first()
     assert "Section 138" in page.extracted_text
@@ -63,11 +64,12 @@ def test_upload_text_document(api_client, tmp_path):
 
 
 @pytest.mark.django_db
-def test_list_and_retrieve_documents(api_client):
+def test_list_and_retrieve_documents(api_client, auth_user):
     """
     Test listing documents and retrieving specific document details.
     """
     doc = Document.objects.create(
+        owner=auth_user,
         title="High Court Order",
         file="documents/sample.pdf",
         status=Document.Status.COMPLETED,
@@ -96,7 +98,7 @@ def test_list_and_retrieve_documents(api_client):
 
 
 @pytest.mark.django_db
-def test_permanent_deletion_data_sovereignty(api_client, settings, tmp_path):
+def test_permanent_deletion_data_sovereignty(api_client, auth_user, settings, tmp_path):
     """
     Test Rule 6 of AI Safety Contract: Permanent one-click deletion removes DB record and physical file.
     """

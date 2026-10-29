@@ -336,6 +336,18 @@ export function DocumentWorkspace({ documentId, onBack, onDocumentDeleted }: Doc
                   <Download className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Export Text</span>
                 </Button>
+
+                {document.download_url && (
+                  <a
+                    href={document.download_url}
+                    download
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border border-slate-300 dark:border-charcoal-100 hover:border-gold-500/50 hover:bg-gold-500/10 text-slate-700 dark:text-slate-300 transition-colors h-8"
+                    title="Download original document file"
+                  >
+                    <Download className="w-3.5 h-3.5 text-gold-500" />
+                    <span className="hidden sm:inline">Original File</span>
+                  </a>
+                )}
               </div>
             </div>
 

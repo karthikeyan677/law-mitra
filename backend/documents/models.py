@@ -1,12 +1,16 @@
 import uuid
 import os
 from django.db import models
+from django.contrib.auth.models import User
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 
 class Document(models.Model):
     """
     Represents an uploaded legal document (PDF, notice, petition, order, image).
     Subject to AI Safety Contract Rule 6 (Data Sovereignty): permanent deletion.
+    Belongs strictly to its owning User.
     """
     class Status(models.TextChoices):
         PENDING = 'pending', 'Pending'
@@ -15,6 +19,12 @@ class Document(models.Model):
         FAILED = 'failed', 'Failed'
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='documents',
+        help_text="User who owns this document"
+    )
     title = models.CharField(max_length=255, help_text="User-provided or derived document title")
     file = models.FileField(upload_to='documents/%Y/%m/', help_text="Stored document file")
     file_type = models.CharField(max_length=50, blank=True, default='', help_text="e.g. application/pdf, image/png")
@@ -85,3 +95,16 @@ class DocumentPage(models.Model):
         else:
             self.word_count = 0
         super().save(*args, **kwargs)
+
+
+@receiver(post_delete, sender=Document)
+def cleanup_document_file_on_delete(sender, instance, **kwargs):
+    """
+    Ensure physical disk files are destroyed when documents are deleted
+    directly or via cascade deletion when a user account is deleted (Rule 6).
+    """
+    if instance.file and os.path.isfile(instance.file.path):
+        try:
+            os.remove(instance.file.path)
+        except OSError:
+            pass

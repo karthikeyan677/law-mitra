@@ -203,11 +203,9 @@ export function DocumentUploadModal({ isOpen, onClose, onUploadSuccess }: Docume
           )}
 
           {/* Privacy & Safety Note */}
-          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-slate-100 dark:bg-charcoal/80 text-[11px] text-slate-600 dark:text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-verified shrink-0 mt-0.5" />
-            <span>
-              <strong>Rule 6 Data Sovereignty:</strong> Your document is securely stored in your private vault. You have complete control and can permanently delete it and all parsed records at any time.
-            </span>
+          <div className="flex items-center gap-2.5 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-slate-700 dark:text-slate-200 font-medium">
+            <ShieldCheck className="w-4 h-4 text-verified shrink-0" />
+            <span>Your document is private. You can delete it anytime.</span>
           </div>
 
           {/* Actions */}

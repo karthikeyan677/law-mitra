@@ -47,7 +47,9 @@ class DocumentUploadSerializer(serializers.ModelSerializer):
             else:
                 content_type = 'application/octet-stream'
 
+        owner = self.context['request'].user
         document = Document.objects.create(
+            owner=owner,
             title=title,
             file=file_obj,
             file_type=content_type,
@@ -73,6 +75,7 @@ class DocumentPageSerializer(serializers.ModelSerializer):
 class DocumentDetailSerializer(serializers.ModelSerializer):
     pages = DocumentPageSerializer(many=True, read_only=True)
     file_url = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -80,6 +83,7 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
             'id',
             'title',
             'file_url',
+            'download_url',
             'file_type',
             'file_size',
             'page_count',
@@ -91,23 +95,28 @@ class DocumentDetailSerializer(serializers.ModelSerializer):
             'pages',
         )
 
-    def get_file_url(self, obj):
+    def get_download_url(self, obj):
         request = self.context.get('request')
-        if obj.file:
-            if request is not None:
-                return request.build_absolute_uri(obj.file.url)
-            return obj.file.url
-        return None
+        url = f"/api/documents/{obj.id}/download/"
+        if request is not None:
+            return request.build_absolute_uri(url)
+        return url
+
+    def get_file_url(self, obj):
+        # Protected download endpoint instead of public media URL (Rule 11)
+        return self.get_download_url(obj)
 
 
 class DocumentListSerializer(serializers.ModelSerializer):
     total_words = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
         fields = (
             'id',
             'title',
+            'download_url',
             'file_type',
             'file_size',
             'page_count',
@@ -117,6 +126,13 @@ class DocumentListSerializer(serializers.ModelSerializer):
             'updated_at',
             'total_words',
         )
+
+    def get_download_url(self, obj):
+        request = self.context.get('request')
+        url = f"/api/documents/{obj.id}/download/"
+        if request is not None:
+            return request.build_absolute_uri(url)
+        return url
 
     def get_total_words(self, obj):
         return sum(page.word_count for page in obj.pages.all())
