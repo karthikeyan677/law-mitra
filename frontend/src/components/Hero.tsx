@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { Upload, Lock, Shield, FileText, Sparkles, AlertCircle, ArrowRight } from 'lucide-react';
+import { Upload, Lock, Shield, FileText, Sparkles, FolderLock, ArrowRight } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 
-export function Hero() {
-  const [showTooltip, setShowTooltip] = useState(false);
+interface HeroProps {
+  onOpenUpload?: () => void;
+  onOpenVault?: () => void;
+}
 
+export function Hero({ onOpenUpload, onOpenVault }: HeroProps) {
   return (
     <section className="relative overflow-hidden pt-12 pb-20 md:pt-20 md:pb-28">
       {/* Background Subtle Gradient Blobs */}
@@ -19,12 +22,12 @@ export function Hero() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-navy-900/5 dark:bg-navy-900/50 border border-navy-900/10 dark:border-gold-500/20 text-xs font-semibold text-navy-900 dark:text-gold-300 mb-6 backdrop-blur-sm"
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-navy-900/5 dark:bg-navy-900/50 border border-navy-900/10 dark:border-gold-500/20 text-xs font-semibold text-navy-900 dark:text-gold-300 mb-6 backdrop-blur-sm shadow-sm"
         >
           <Sparkles className="w-3.5 h-3.5 text-accent" />
-          <span>Foundation & Design System (Phase 0)</span>
-          <span className="w-1.5 h-1.5 rounded-full bg-accent" />
-          <span className="text-slate-500 dark:text-slate-400">8 Indic Scripts Supported</span>
+          <span>Phase 1 Active: Document Vault & OCR Pipeline</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-slate-500 dark:text-slate-400">PDF & Image OCR</span>
         </motion.div>
 
         {/* Main Title & Tagline */}
@@ -51,51 +54,41 @@ export function Hero() {
           Transform convoluted legalese into clear, verifiable explanations in your regional language.
         </motion.p>
 
-        {/* CTA Area with "Coming Soon" Tooltip */}
+        {/* CTA Area */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
           className="mt-10 flex flex-col items-center justify-center gap-4"
         >
-          <div
-            className="relative inline-block"
-            onMouseEnter={() => setShowTooltip(true)}
-            onMouseLeave={() => setShowTooltip(false)}
-          >
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Button
               size="lg"
               variant="primary"
-              disabled
-              className="gap-3 px-8 shadow-soft-lg cursor-not-allowed opacity-75"
+              onClick={onOpenUpload}
+              className="gap-3 px-8 shadow-soft-lg hover:shadow-gold-500/20 group"
               id="upload-doc-button"
             >
-              <Upload className="w-5 h-5 text-accent" />
-              <span>Upload your document</span>
+              <Upload className="w-5 h-5 text-accent group-hover:-translate-y-0.5 transition-transform" />
+              <span>Upload Legal Document</span>
             </Button>
 
-            {/* Coming Soon Tooltip Popover */}
-            {showTooltip && (
-              <div
-                role="tooltip"
-                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-64 p-3 bg-navy-950 text-ivory text-xs rounded-card shadow-soft-lg border border-gold-500/30 text-center z-50 animate-in fade-in zoom-in-95 duration-150"
-              >
-                <div className="flex items-center justify-center gap-1.5 text-accent font-bold mb-1">
-                  <AlertCircle className="w-3.5 h-3.5" />
-                  <span>Coming soon in Phase 1</span>
-                </div>
-                <p className="text-slate-300 text-[11px] leading-tight">
-                  Document upload, OCR, and AI pipeline will be activated in the next development phase.
-                </p>
-                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-navy-950" />
-              </div>
-            )}
+            <Button
+              size="lg"
+              variant="outline"
+              onClick={onOpenVault}
+              className="gap-2.5 px-6 shadow-sm border-gold-500/40 hover:bg-gold-500/10"
+              id="open-vault-button"
+            >
+              <FolderLock className="w-4 h-4 text-gold-500" />
+              <span>Document Vault</span>
+            </Button>
           </div>
 
-          {/* Privacy Line as mandated */}
+          {/* Privacy Line as mandated by Rule 6 */}
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-2 font-medium">
             <Lock className="w-3.5 h-3.5 text-verified" />
-            <span>Your document is private. You can delete it anytime.</span>
+            <span>Your document is private. Complete data sovereignty with one-click permanent deletion.</span>
           </div>
         </motion.div>
 
@@ -109,17 +102,14 @@ export function Hero() {
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mr-1">
             Safety Standards:
           </span>
-          <Badge variant="verified" withIcon>
-            Statute Citations Required
+          <Badge variant="verified" className="shadow-xs">
+            Verified Legal Citation
           </Badge>
-          <Badge variant="needs-verification" withIcon>
-            Unverified Claims Flagged
+          <Badge variant="needs-verification" className="shadow-xs">
+            Needs Verification
           </Badge>
-          <Badge variant="alleged" withIcon>
-            Allegations Never Shown as Facts
-          </Badge>
-          <Badge variant="default" withIcon>
-            Zero Hallucination
+          <Badge variant="alleged" className="shadow-xs">
+            Contested Allegation
           </Badge>
         </motion.div>
       </div>

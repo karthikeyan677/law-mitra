@@ -12,8 +12,16 @@ export interface ToastItem {
   type?: ToastType;
 }
 
+export interface ToastOptions {
+  title: string;
+  description?: string;
+  type?: ToastType;
+  variant?: 'success' | 'destructive' | 'warning' | 'info' | 'error';
+}
+
 interface ToastContextType {
-  toast: (options: { title: string; description?: string; type?: ToastType }) => void;
+  toast: (options: ToastOptions) => void;
+  addToast: (options: ToastOptions) => void;
   dismiss: (id: string) => void;
 }
 
@@ -27,9 +35,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toast = useCallback(
-    ({ title, description, type = 'info' }: { title: string; description?: string; type?: ToastType }) => {
+    ({ title, description, type, variant }: ToastOptions) => {
+      let resolvedType: ToastType = type || 'info';
+      if (variant === 'destructive' || variant === 'error') {
+        resolvedType = 'error';
+      } else if (variant === 'success') {
+        resolvedType = 'success';
+      } else if (variant === 'warning') {
+        resolvedType = 'warning';
+      }
+
       const id = Math.random().toString(36).substring(2, 9);
-      setToasts((prev) => [...prev, { id, title, description, type }]);
+      setToasts((prev) => [...prev, { id, title, description, type: resolvedType }]);
 
       setTimeout(() => {
         dismiss(id);
@@ -39,7 +56,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ToastContext.Provider value={{ toast, dismiss }}>
+    <ToastContext.Provider value={{ toast, addToast: toast, dismiss }}>
       {children}
       {/* Toast container portal */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none px-4">

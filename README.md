@@ -142,7 +142,15 @@ npm run dev
   - [x] Premium landing page with hero, 8-language switcher, disabled upload tooltip, 3-step explainer, privacy notice, and live API status badge
   - [x] Docker Compose multi-container setup with hot reload
   - [x] Comprehensive documentation (`SETUP.md`, `AI_SAFETY_CONTRACT.md`, `README.md`)
-- [ ] **Phase 1: Document Vault & OCR Pipeline** (Celery, Redis, Tesseract OCR, PDF parsing)
+- [x] **Phase 1: Document Vault & OCR Pipeline**
+  - [x] Data models `Document` & `DocumentPage` with Data Sovereignty deletion (Rule 6 compliance)
+  - [x] Document upload endpoint (`POST /api/documents/upload/`), list (`GET /api/documents/`), and detail (`GET /api/documents/<id>/`)
+  - [x] Background text extraction engine (`pypdf`, `Pillow`, `pytesseract`) with async worker fallback
+  - [x] One-click permanent purge (`DELETE /api/documents/<id>/`) deleting database records and media from disk
+  - [x] React Drag & Drop `DocumentUploadModal` with file validation (PDF, images, text up to 25MB)
+  - [x] Interactive `DocumentWorkspace` with page-by-page text reader, in-page search, copy & text download
+  - [x] `DocumentVaultModal` for browsing and managing all uploaded legal documents
+  - [x] Comprehensive pytest test suite validating upload, extraction, listing, and hard delete
 - [ ] **Phase 2: Plain Language Simplification & Legal Entity Extraction** (Ollama, Local LLM)
 - [ ] **Phase 3: Legal Knowledge Retrieval & RAG** (LangChain, FAISS, BNS/IPC/CrPC Section Indexing)
 - [ ] **Phase 4: Indic Multilingual Translation & Voice Query** (IndicTrans2, Whisper)
